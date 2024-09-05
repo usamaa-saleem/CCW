@@ -7,7 +7,7 @@ import os
 
 # Initialize Firebase Admin SDK
 def initialize_firebase():
-    cred = credentials.Certificate('ccw-production-3c9b8-firebase-adminsdk-gxree-299a765cca.json')  # Path to your Firebase service account key
+    cred = credentials.Certificate('ccw.json')  # Path to your Firebase service account key
     firebase_admin.initialize_app(cred, {
         'storageBucket': 'ccw-production-3c9b8.appspot.com'  # Replace with your Firebase Storage bucket name
     })
