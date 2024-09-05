@@ -1,39 +1,5 @@
 import streamlit as st
 import requests
-import firebase_admin
-from firebase_admin import credentials, storage
-import tempfile
-import os
-
-# Initialize Firebase Admin SDK
-def initialize_firebase():
-    cred = credentials.Certificate('ccw.json')  # Path to your Firebase service account key
-    firebase_admin.initialize_app(cred, {
-        'storageBucket': 'ccw-production-3c9b8.appspot.com'  # Replace with your Firebase Storage bucket name
-    })
-
-# Upload image to Firebase Storage and get the URL
-def upload_to_firebase(file):
-    bucket = storage.bucket()
-    
-    # Create a temporary file
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        temp_file.write(file.read())
-        temp_file.flush()
-        temp_file.seek(0)
-        blob = bucket.blob(f'uploaded-images/{os.path.basename(temp_file.name)}')
-        blob.upload_from_filename(temp_file.name)
-        blob.make_public()  # Make the file publicly accessible
-        public_url = blob.public_url
-        
-    # Clean up temporary file
-    os.remove(temp_file.name)
-    
-    return public_url
-
-# Initialize Firebase (only once)
-if not firebase_admin._apps:
-    initialize_firebase()
 
 # Streamlit App
 st.title('Prompt to Character Generator')
@@ -41,21 +7,18 @@ st.title('Prompt to Character Generator')
 # Text input for prompt
 prompt = st.text_input('Enter a prompt:')
 
-# File uploader for image upload
-uploaded_image = st.file_uploader("Upload an image:", type=["jpg", "jpeg", "png"])
+# Text input for image URL (instead of file uploader)
+image_url = st.text_input('Enter the Image URL:')
 
 # Add a button to generate the image
 if st.button('Generate'):
     if prompt.strip():  # Check if prompt is not empty
-        if uploaded_image is not None:  # Check if an image has been uploaded
-            # Upload the image to Firebase Storage and get the URL
-            image_url = upload_to_firebase(uploaded_image)
-            
+        if image_url.strip():  # Check if the image URL is not empty
             # Prepare the API request body
             request_body = {
                 "input": {
                     "style": "CCW",
-                    "input_image": image_url,  # Use the cloud storage URL
+                    "input_image": image_url,  # Use the image URL instead of base64 string
                     "prompt": prompt
                 }
             }
@@ -75,10 +38,13 @@ if st.button('Generate'):
                 if response.status_code == 200:
                     result = response.json()
                     
+                    # Display the API result (json output)
+                    st.subheader("API Response Details:")
+                    # st.json(result)  # Show the entire JSON response
+                    
                     # Extract the image URL from the "output" array
                     generated_image_url = result.get('output')[0]  # First image URL in the output array
                     if generated_image_url:
-                        # Display the generated image
                         st.image(generated_image_url, caption=f"Generated for: {prompt}")
                     else:
                         st.error('Failed to get the image URL from the response.')
@@ -90,6 +56,6 @@ if st.button('Generate'):
             except requests.exceptions.RequestException as e:
                 st.error(f"Request failed: {str(e)}")
         else:
-            st.error('Please upload an image.')
+            st.error('Please enter a valid image URL.')
     else:
         st.error('Prompt cannot be empty. Please enter a prompt.')
